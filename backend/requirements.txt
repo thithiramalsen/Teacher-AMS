@@ -1,9 +1,17 @@
-fastapi==0.100.0
-uvicorn[standard]==0.22.0
-pydantic==2.3.1
-motor==3.7.1
-python-jose==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-python-dotenv==1.0.0
-dnspython==2.3.0
+fastapi
+uvicorn[standard]
+beanie
+motor
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+email-validator
+python-multipart
+pymongo 4.15.5
+dnspython 2.8.0
+
+# testing
+pytest
+pytest-asyncio
+httpx
+mongomock_motor

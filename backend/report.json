@@ -1,0 +1,15 @@
+﻿{
+  "date": "2024-09-01",
+  "class_name": "Grade 10-A",
+  "class_teacher_id": "695855ce5a53bd04ecd85808",
+  "periods": [
+    {"period_number": 1, "subject": "Mathematics", "topic": "Algebra - linear equations", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""},
+    {"period_number": 2, "subject": "Mathematics", "topic": "Algebra practice", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""},
+    {"period_number": 3, "subject": "Physics", "topic": "Newton's laws", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""},
+    {"period_number": 4, "subject": "English", "topic": "Poetry analysis", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""},
+    {"period_number": 5, "subject": "History", "topic": "World War II overview", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": false, "remarks": "Substituted"},
+    {"period_number": 6, "subject": "Biology", "topic": "Cell structure", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""},
+    {"period_number": 7, "subject": "PE", "topic": "Team sports", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""},
+    {"period_number": 8, "subject": "Art", "topic": "Sketching basics", "subject_teacher_id": "695855ce5a53bd04ecd85808", "signed": true, "remarks": ""}
+  ]
+}

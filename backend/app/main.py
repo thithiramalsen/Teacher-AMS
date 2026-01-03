@@ -3,6 +3,7 @@ from typing import Optional
 
 from beanie import init_beanie
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import Settings, get_settings
@@ -31,6 +32,14 @@ def create_app(settings: Optional[Settings] = None, motor_client: Optional[Async
     app = FastAPI(title="Teacher AMS Backend", lifespan=lifespan)
     app.state.settings = settings
     app.state.motor_client = motor_client
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     app.include_router(auth.router)
     app.include_router(reports.router)

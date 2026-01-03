@@ -4,13 +4,17 @@ from typing import List, Optional
 from beanie import PydanticObjectId
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.report import SignatureStatus
+
 
 class PeriodIn(BaseModel):
     period_number: int
     subject: str = Field(min_length=1)
     topic: str = Field(min_length=1)
     subject_teacher_id: PydanticObjectId
-    signed: bool = False
+    signature_status: SignatureStatus = "absent"
+    signed_by: Optional[PydanticObjectId] = None
+    signed_at: Optional[datetime] = None
     remarks: str | None = None
 
     @field_validator("period_number")
@@ -25,11 +29,12 @@ class PeriodOut(PeriodIn):
     pass
 
 
-class DailyReportCreate(BaseModel):
+class DailyReportUpsert(BaseModel):
     date: date
-    class_name: str = Field(min_length=1)
+    class_name: str = Field(min_length=1)  # stores classroom identifier
     class_teacher_id: PydanticObjectId
     periods: List[PeriodIn] = Field(min_length=8, max_length=8)
+    status: str = "draft"
 
     @field_validator("periods")
     @classmethod
@@ -47,7 +52,11 @@ class DailyReportOut(BaseModel):
     class_teacher_id: PydanticObjectId
     periods: List[PeriodOut]
     total_periods_taught: int
+    status: str
     created_at: datetime
+    updated_at: datetime
+    last_modified_by: Optional[PydanticObjectId] = None
+    last_modified_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -59,3 +68,17 @@ class DailyReportFilter(BaseModel):
     subject_teacher_id: Optional[PydanticObjectId] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+
+
+class PeriodSignRequest(BaseModel):
+    signature_status: SignatureStatus
+
+
+class ReportHistoryOut(BaseModel):
+    report_id: Optional[str]
+    class_name: str
+    date: date
+    actor_id: Optional[PydanticObjectId]
+    action: str
+    payload: dict
+    created_at: datetime

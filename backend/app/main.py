@@ -9,6 +9,7 @@ import certifi
 
 from app.config import Settings, get_settings
 from app.models.report import DailyReport
+from app.models.report_history import ReportHistory
 from app.models.user import User
 from app.models.subject import Subject
 from app.models.classroom import Classroom
@@ -28,7 +29,7 @@ async def lifespan(app: FastAPI):
         )
         created_client = True
     db = motor_client[settings.mongodb_db]
-    await init_beanie(database=db, document_models=[User, DailyReport, Subject, Classroom])
+    await init_beanie(database=db, document_models=[User, DailyReport, ReportHistory, Subject, Classroom])
     yield
     if created_client:
         motor_client.close()

@@ -26,3 +26,12 @@ export const setSubjectTeachers = (id: string, teacherIds: string[]) => api.patc
 export const createClassroom = (payload: { name: string; grade?: string }) => api.post('/classrooms', payload)
 export const deleteClassroom = (id: string) => api.delete(`/classrooms/${id}`)
 export const assignClassroom = (id: string, payload: { class_teacher_id?: string | null; subject_ids?: string[] }) => api.patch(`/classrooms/${id}/assign`, payload)
+
+// reports
+export const fetchReports = (params?: Record<string, any>) => api.get('/reports', { params })
+export const upsertReport = (payload: any) => api.post('/reports', payload)
+export const fetchReportByClassAndDate = (class_name: string, report_date: string) => api.get('/reports/current', { params: { class_name, report_date } })
+export const signReportPeriod = (report_id: string, period_number: number, signature_status: 'absent' | 'signed') =>
+  api.patch(`/reports/${report_id}/periods/${period_number}/sign`, { signature_status })
+export const submitReportFinal = (report_id: string) => api.post(`/reports/${report_id}/submit`)
+export const fetchReportHistory = (class_name: string, report_date: string) => api.get('/reports/history/by-class', { params: { class_name, report_date } })

@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
-import { createReport } from '../hooks/useReports'
-import { useNavigate } from 'react-router-dom'
-import { Card, TextInput, Checkbox, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea, Badge, Select } from '@mantine/core'
-import { FileEdit } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Card, TextInput, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea, Badge, Select, Tooltip } from '@mantine/core'
+import { FileEdit, CheckCircle2, MinusCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { fetchSubjects, fetchClassrooms, fetchTeachers } from '../api'
+import { fetchSubjects, fetchClassrooms, fetchTeachers, upsertReport, fetchReportByClassAndDate, signReportPeriod, submitReportFinal } from '../api'
 
 const formatObjectId = (id?: string) => {
   if (!id) return ''
@@ -16,17 +15,20 @@ const formatObjectId = (id?: string) => {
 export default function ReportForm(){
   const { user } = useAuth()
   const { register, control, handleSubmit, watch, setValue } = useForm<any>({
-    defaultValues: { periods: Array.from({length:8}, (_,i)=>({ period_number: i+1, subject: '', topic: '', subject_teacher_id: '', signed: false, remarks: '' })) }
+    defaultValues: { periods: Array.from({length:8}, (_,i)=>({ period_number: i+1, subject: '', topic: '', subject_teacher_id: '', signature_status: 'absent', remarks: '' })) }
   })
+  const [searchParams] = useSearchParams()
   const { fields } = useFieldArray<any>({ control, name: 'periods' })
   const [subjectOptions, setSubjectOptions] = useState<{ value: string; label: string }[]>([])
   const [classroomOptions, setClassroomOptions] = useState<{ value: string; label: string; classTeacherId?: string }[]>([])
   const [teacherOptions, setTeacherOptions] = useState<{ value: string; label: string }[]>([])
-  const navigate = useNavigate()
+  const [reportId, setReportId] = useState<string | null>(null)
+  const [statusLabel, setStatusLabel] = useState<string>('draft')
   const periods = watch('periods') || []
+  const dateValue = watch('date')
   const totalTaught = useMemo(() => {
     const list = Array.isArray(periods) ? periods : []
-    return list.reduce((acc, p) => acc + (p?.signed ? 1 : 0), 0)
+    return list.reduce((acc, p) => acc + (p?.signature_status === 'signed' ? 1 : 0), 0)
   }, [periods])
   const teacherDisplayId = useMemo(() => {
     if (!user) return ''
@@ -44,18 +46,33 @@ export default function ReportForm(){
     return foundTeacher ? foundTeacher.label : teacherDisplayId
   }, [classNameValue, classroomOptions, teacherOptions, teacherDisplayId])
 
+  const classLabel = (id?: string) => {
+    if (!id) return ''
+    const found = classroomOptions.find(c => c.value === id)
+    return found ? found.label : id
+  }
+
+  useEffect(() => {
+    const classParam = searchParams.get('class_name')
+    const dateParam = searchParams.get('date')
+    if (classParam) setValue('class_name', classParam)
+    if (dateParam) setValue('date', dateParam)
+  }, [searchParams, setValue])
+
   useEffect(() => {
     if (!user) return
     const needsPeriodUpdate = (periods || []).some((p: any) => !p?.subject_teacher_id)
     const needsClassUpdate = !watch('class_teacher_id')
-    if (!needsPeriodUpdate && !needsClassUpdate) return
     if (needsClassUpdate) setValue('class_teacher_id', user.id)
-    const updated = (periods || []).map((p: any, idx: number) => ({
-      ...p,
-      period_number: idx + 1,
-      subject_teacher_id: p.subject_teacher_id || user.id,
-    }))
-    if (needsPeriodUpdate) setValue('periods', updated)
+    if (needsPeriodUpdate) {
+      const updated = (periods || []).map((p: any, idx: number) => ({
+        ...p,
+        period_number: idx + 1,
+        subject_teacher_id: p.subject_teacher_id || user.id,
+        signature_status: p.signature_status || 'absent',
+      }))
+      setValue('periods', updated)
+    }
   }, [user, setValue, periods, watch])
 
   useEffect(() => {
@@ -66,7 +83,12 @@ export default function ReportForm(){
           fetchClassrooms(),
           fetchTeachers(),
         ])
-        setSubjectOptions(subjectsRes.data.map((s: any) => ({ value: s._id, label: s.name })))
+        const allSubjects = subjectsRes.data || []
+        const assigned = user?.role === 'teacher'
+          ? allSubjects.filter((s: any) => (s.teacher_ids || []).map((t: any)=>String(t)).includes(String(user.id)))
+          : allSubjects
+        const subjectList = (assigned.length > 0 ? assigned : allSubjects).map((s: any) => ({ value: s._id, label: s.name }))
+        setSubjectOptions(subjectList)
         setClassroomOptions(classroomsRes.data.map((c: any) => ({ value: c._id, label: c.name, classTeacherId: c.class_teacher_id })))
         setTeacherOptions(teachersRes.data.map((t: any) => ({ value: t.id, label: `${t.name} (${t.display_id || t.id.slice(0,4)+'...'+t.id.slice(-4)})` })))
       } catch (err) {
@@ -76,30 +98,117 @@ export default function ReportForm(){
     loadLists()
   }, [])
 
+  useEffect(() => {
+    async function loadExisting(){
+      if(!classNameValue || !dateValue) return
+      try{
+        const res = await fetchReportByClassAndDate(classNameValue, dateValue)
+        if(res.data){
+          const r = res.data
+          setReportId(r.id)
+          setStatusLabel(r.status)
+          setValue('class_teacher_id', r.class_teacher_id)
+          setValue('periods', r.periods.map((p: any, idx: number)=>({ ...p, period_number: idx+1 })))
+          alert(`Loaded existing report for ${classLabel(classNameValue)} on ${dateValue}`)
+        } else {
+          setReportId(null)
+          setStatusLabel('draft')
+        }
+      }catch(err){
+        setReportId(null)
+        setStatusLabel('draft')
+      }
+    }
+    loadExisting()
+  }, [classNameValue, dateValue, setValue])
+
+  function normalizePeriods(list: any[]) {
+    return (list || []).map((p: any, idx: number) => ({
+      period_number: idx + 1,
+      subject: p.subject || 'TBD',
+      topic: p.topic || 'TBD',
+      subject_teacher_id: p.subject_teacher_id || user?.id,
+      signature_status: p.signature_status || 'absent',
+      remarks: p.remarks || '',
+    }))
+  }
+
+  async function saveDraft(data: any){
+    const payload = {
+      date: data.date,
+      class_name: data.class_name,
+      class_teacher_id: data.class_teacher_id || user?.id,
+      status: 'draft',
+      periods: normalizePeriods(data.periods),
+    }
+    const resp = await upsertReport(payload)
+    setReportId(resp.data.id)
+    setStatusLabel(resp.data.status)
+    setValue('periods', resp.data.periods)
+    return resp.data
+  }
+
   async function onSubmit(data: any){
     try{
-      const payload = {
-        ...data,
-        class_teacher_id: data.class_teacher_id || user?.id,
-        periods: (data.periods || []).map((p: any, idx: number) => ({
-          ...p,
-          period_number: idx + 1,
-          subject_teacher_id: p.subject_teacher_id || user?.id,
-        })),
-      }
-      const resp = await createReport(payload)
-      alert('Created: ' + resp.id)
-      navigate('/')
+      await saveDraft(data)
+      alert('Report saved')
     }catch(err){
-      alert('Failed to create report. Please check all required fields.')
+      alert('Failed to save report. Please check all required fields.')
     }
+  }
+
+  async function handleSign(idx: number){
+    if(!user) return
+    const periodNumber = idx + 1
+    const currentStatus = periods[idx]?.signature_status || 'absent'
+    // If there's no local reportId yet, check if a report already exists for this class/date
+    if(!reportId){
+      try{
+        const existing = await fetchReportByClassAndDate(classNameValue, dateValue)
+        if(existing.data){
+          // notify and load existing instead of creating duplicate
+          alert(`A report already exists for ${classLabel(classNameValue)} on ${dateValue} — opening existing report.`)
+          const r = existing.data
+          setReportId(r.id)
+          setStatusLabel(r.status)
+          setValue('class_teacher_id', r.class_teacher_id)
+          setValue('periods', r.periods.map((p: any, idx: number)=>({ ...p, period_number: idx+1 })))
+          return
+        }
+      }catch(err){
+        // ignore and proceed to create draft
+      }
+      // create draft if none exists
+      const current = { date: dateValue, class_name: classNameValue, class_teacher_id: watch('class_teacher_id'), periods }
+      const saved = await saveDraft(current)
+      // ensure reportId is set for signing
+      setReportId(saved.id)
+    }
+    const targetStatus: 'absent' | 'signed' = currentStatus === 'signed' ? 'absent' : 'signed'
+    const res = await signReportPeriod(reportId!, periodNumber, targetStatus)
+    setReportId(res.data.id)
+    setStatusLabel(res.data.status)
+    setValue('periods', res.data.periods)
+  }
+
+  async function handleSubmitFinal(){
+    if(!reportId){
+      const data = { date: dateValue, class_name: classNameValue, class_teacher_id: watch('class_teacher_id'), periods }
+      const draft = await saveDraft(data)
+      setReportId(draft.id)
+    }
+    if(!reportId) return
+    const res = await submitReportFinal(reportId)
+    setStatusLabel(res.data.status)
+    setValue('periods', res.data.periods)
+    alert('Report submitted')
   }
 
   return (
     <Card shadow="lg" padding="xl" style={{ maxWidth: 1100, margin: '0 auto', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
       <Group position="apart" align="center">
         <Title order={2} style={{ display:'flex', alignItems:'center', gap:8 }}><FileEdit size={22}/> New Daily Report</Title>
-        <Badge color="indigo" variant="filled">v1</Badge>
+        <Badge color={statusLabel === 'submitted' ? 'teal' : 'indigo'} variant="filled">{statusLabel}</Badge>
       </Group>
       <Space h="md" />
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -177,7 +286,7 @@ export default function ReportForm(){
                     <input type="hidden" {...register(`periods.${idx}.subject_teacher_id`)} />
                     <Select
                       placeholder="Subject teacher"
-                      data={teacherOptions}
+                      data={user?.role === 'admin' ? teacherOptions : teacherOptions.filter(t => t.value === user?.id)}
                       value={periods[idx]?.subject_teacher_id || ''}
                       onChange={(value) => setValue(`periods.${idx}.subject_teacher_id`, value || '')}
                       searchable
@@ -185,7 +294,11 @@ export default function ReportForm(){
                     />
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <Checkbox {...register(`periods.${idx}.signed`)} />
+                    <Tooltip label={periods[idx]?.signature_status === 'signed' ? 'Signed' : 'Mark present'}>
+                      <Button size="xs" variant={periods[idx]?.signature_status === 'signed' ? 'light' : 'subtle'} color={periods[idx]?.signature_status === 'signed' ? 'teal' : 'gray'} onClick={()=>handleSign(idx)} leftIcon={periods[idx]?.signature_status === 'signed' ? <CheckCircle2 size={14}/> : <MinusCircle size={14}/> }>
+                        {periods[idx]?.signature_status === 'signed' ? 'Signed' : 'Sign'}
+                      </Button>
+                    </Tooltip>
                   </td>
                   <td>
                     <Textarea minRows={1} autosize placeholder="Remarks" {...register(`periods.${idx}.remarks`)} />
@@ -196,8 +309,9 @@ export default function ReportForm(){
           </Table>
         </ScrollArea>
         <Space h="md" />
-        <Group position="right">
-          <Button type="submit">Submit</Button>
+        <Group position="apart">
+          <Button variant="light" onClick={handleSubmit(onSubmit)}>Save Draft</Button>
+          <Button type="button" onClick={handleSubmitFinal} color="teal">Submit (class teacher/admin)</Button>
         </Group>
       </form>
     </Card>

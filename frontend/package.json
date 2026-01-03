@@ -17,7 +17,8 @@
     "zod": "^3.23.2",
     "@hookform/resolvers": "^3.1.1",
     "@mantine/core": "^6.0.0",
-    "lucide-react": "^0.452.0"
+    "lucide-react": "^0.452.0",
+    "react-hot-toast": "^2.4.0"
   },
   "devDependencies": {
     "vite": "^5.2.0",

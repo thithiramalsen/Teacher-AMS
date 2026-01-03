@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
 import { Paper, Container, Group, Title, Text, Button } from '@mantine/core'
+import { Toaster } from 'react-hot-toast'
 import NavBar from './components/NavBar'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -20,6 +21,7 @@ export default function App() {
 
   return (
     <>
+      <Toaster position="top-right" />
       <NavBar />
       <Container size="lg" style={{ paddingTop: 24 }}>
         <Routes>

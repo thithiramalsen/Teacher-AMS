@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { Card, TextInput, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea, Badge, Select, Tooltip } from '@mantine/core'
+import toast from 'react-hot-toast'
 import { FileEdit, CheckCircle2, MinusCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { fetchSubjects, fetchClassrooms, fetchTeachers, upsertReport, fetchReportByClassAndDate, signReportPeriod, submitReportFinal } from '../api'
@@ -109,7 +110,7 @@ export default function ReportForm(){
           setStatusLabel(r.status)
           setValue('class_teacher_id', r.class_teacher_id)
           setValue('periods', r.periods.map((p: any, idx: number)=>({ ...p, period_number: idx+1 })))
-          alert(`Loaded existing report for ${classLabel(classNameValue)} on ${dateValue}`)
+          toast.success(`Loaded existing report for ${classLabel(classNameValue)} on ${dateValue}`)
         } else {
           setReportId(null)
           setStatusLabel('draft')
@@ -151,9 +152,9 @@ export default function ReportForm(){
   async function onSubmit(data: any){
     try{
       await saveDraft(data)
-      alert('Report saved')
+      toast.success('Report saved')
     }catch(err){
-      alert('Failed to save report. Please check all required fields.')
+      toast.error('Failed to save report. Please check all required fields.')
     }
   }
 
@@ -167,7 +168,7 @@ export default function ReportForm(){
         const existing = await fetchReportByClassAndDate(classNameValue, dateValue)
         if(existing.data){
           // notify and load existing instead of creating duplicate
-          alert(`A report already exists for ${classLabel(classNameValue)} on ${dateValue} — opening existing report.`)
+          toast('A report already exists for ' + classLabel(classNameValue) + ' on ' + dateValue + ' — opening existing report.', { icon: 'ℹ️' })
           const r = existing.data
           setReportId(r.id)
           setStatusLabel(r.status)
@@ -201,7 +202,7 @@ export default function ReportForm(){
     const res = await submitReportFinal(reportId)
     setStatusLabel(res.data.status)
     setValue('periods', res.data.periods)
-    alert('Report submitted')
+    toast.success('Report submitted')
   }
 
   return (

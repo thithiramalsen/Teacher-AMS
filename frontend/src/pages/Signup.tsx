@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Card, TextInput, PasswordInput, Button, Title, Space } from '@mantine/core'
+import toast from 'react-hot-toast'
 import { UserPlus } from 'lucide-react'
 
 export default function Signup(){
@@ -15,7 +16,7 @@ export default function Signup(){
       await signup(data.name, data.email, data.password)
       navigate('/login')
     }catch(err){
-      alert('Signup failed')
+      toast.error('Signup failed')
     }
   }
 

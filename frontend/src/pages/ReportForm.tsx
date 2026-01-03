@@ -2,15 +2,18 @@ import React, { useMemo } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { createReport } from '../hooks/useReports'
 import { useNavigate } from 'react-router-dom'
-import { Card, TextInput, Checkbox, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea } from '@mantine/core'
+import { Card, TextInput, Checkbox, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea, Badge } from '@mantine/core'
+import { FileEdit } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
 export default function ReportForm(){
-  const { register, control, handleSubmit } = useForm<any>({
+  const { user } = useAuth()
+  const { register, control, handleSubmit, watch } = useForm<any>({
     defaultValues: { periods: Array.from({length:8}, (_,i)=>({ period_number: i+1, subject: '', topic: '', subject_teacher_id: '', signed: false, remarks: '' })) }
   })
   const { fields } = useFieldArray<any>({ control, name: 'periods' })
   const navigate = useNavigate()
-  const periods = (control._formValues as any)?.periods || []
+  const periods = watch('periods') || []
   const totalTaught = useMemo(() => {
     const list = Array.isArray(periods) ? periods : []
     return list.reduce((acc, p) => acc + (p?.signed ? 1 : 0), 0)
@@ -27,8 +30,11 @@ export default function ReportForm(){
   }
 
   return (
-    <Card shadow="sm" padding="lg" style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <Title order={2}>New Daily Report</Title>
+    <Card shadow="lg" padding="xl" style={{ maxWidth: 1100, margin: '0 auto', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+      <Group position="apart" align="center">
+        <Title order={2} style={{ display:'flex', alignItems:'center', gap:8 }}><FileEdit size={22}/> New Daily Report</Title>
+        <Badge color="indigo" variant="filled">v1</Badge>
+      </Group>
       <Space h="md" />
       <form onSubmit={handleSubmit(onSubmit)}>
         <Grid align="end" gutter="md">
@@ -44,8 +50,11 @@ export default function ReportForm(){
               <Text size="xl" weight={700}>{totalTaught}</Text>
             </Group>
           </Grid.Col>
-          <Grid.Col span={12}>
+          <Grid.Col span={6}>
             <TextInput label="Class name" placeholder="e.g., Grade 10-A" {...register('class_name')} required />
+          </Grid.Col>
+          <Grid.Col span={6}>
+            <TextInput label="Logged in as" value={user?.name || user?.email || ''} readOnly />
           </Grid.Col>
         </Grid>
 

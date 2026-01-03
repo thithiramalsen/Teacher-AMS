@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Card, TextInput, PasswordInput, Button, Select, Title, Space } from '@mantine/core'
+import { UserPlus } from 'lucide-react'
 
 export default function Signup(){
   const { register, handleSubmit, control } = useForm()
@@ -19,8 +20,8 @@ export default function Signup(){
   }
 
   return (
-    <Card shadow="sm" padding="lg" style={{ maxWidth: 520, margin: '0 auto' }}>
-      <Title order={2}>Create account</Title>
+    <Card shadow="lg" padding="xl" style={{ maxWidth: 520, margin: '0 auto', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+      <Title order={2} mb="sm" style={{ display:'flex', alignItems:'center', gap:8 }}><UserPlus size={20}/> Create account</Title>
       <Space h="md" />
       <form onSubmit={handleSubmit(onSubmit)}>
         <TextInput label="Name" placeholder="Full name" {...register('name')} required />

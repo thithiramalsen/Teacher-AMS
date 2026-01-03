@@ -5,6 +5,7 @@ from beanie import init_beanie
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+import certifi
 
 from app.config import Settings, get_settings
 from app.models.report import DailyReport
@@ -18,7 +19,11 @@ async def lifespan(app: FastAPI):
     motor_client = app.state.motor_client
     created_client = False
     if motor_client is None:
-        motor_client = AsyncIOMotorClient(settings.mongodb_uri)
+        motor_client = AsyncIOMotorClient(
+            settings.mongodb_uri,
+            tlsCAFile=settings.mongodb_tls_ca_file or certifi.where(),
+            tlsAllowInvalidCertificates=settings.mongodb_tls_allow_invalid_cert,
+        )
         created_client = True
     db = motor_client[settings.mongodb_db]
     await init_beanie(database=db, document_models=[User, DailyReport])

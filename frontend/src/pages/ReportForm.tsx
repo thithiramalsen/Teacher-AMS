@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { createReport } from '../hooks/useReports'
 import { useNavigate } from 'react-router-dom'
@@ -6,9 +6,15 @@ import { Card, TextInput, Checkbox, Button, Textarea, Grid, Group, Title, Space,
 import { FileEdit } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
+const formatObjectId = (id?: string) => {
+  if (!id) return ''
+  if (id.length <= 8) return id
+  return `${id.slice(0, 4)}...${id.slice(-4)}`
+}
+
 export default function ReportForm(){
   const { user } = useAuth()
-  const { register, control, handleSubmit, watch } = useForm<any>({
+  const { register, control, handleSubmit, watch, setValue } = useForm<any>({
     defaultValues: { periods: Array.from({length:8}, (_,i)=>({ period_number: i+1, subject: '', topic: '', subject_teacher_id: '', signed: false, remarks: '' })) }
   })
   const { fields } = useFieldArray<any>({ control, name: 'periods' })
@@ -18,14 +24,42 @@ export default function ReportForm(){
     const list = Array.isArray(periods) ? periods : []
     return list.reduce((acc, p) => acc + (p?.signed ? 1 : 0), 0)
   }, [periods])
+  const teacherDisplayId = useMemo(() => {
+    if (!user) return ''
+    const short = user.display_id || formatObjectId(user.id)
+    return user.name ? `${user.name} (${short})` : short
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    const needsPeriodUpdate = (periods || []).some((p: any) => !p?.subject_teacher_id)
+    const needsClassUpdate = !watch('class_teacher_id')
+    if (!needsPeriodUpdate && !needsClassUpdate) return
+    if (needsClassUpdate) setValue('class_teacher_id', user.id)
+    const updated = (periods || []).map((p: any, idx: number) => ({
+      ...p,
+      period_number: idx + 1,
+      subject_teacher_id: p.subject_teacher_id || user.id,
+    }))
+    if (needsPeriodUpdate) setValue('periods', updated)
+  }, [user, setValue, periods, watch])
 
   async function onSubmit(data: any){
     try{
-      const resp = await createReport(data)
+      const payload = {
+        ...data,
+        class_teacher_id: data.class_teacher_id || user?.id,
+        periods: (data.periods || []).map((p: any, idx: number) => ({
+          ...p,
+          period_number: idx + 1,
+          subject_teacher_id: p.subject_teacher_id || user?.id,
+        })),
+      }
+      const resp = await createReport(payload)
       alert('Created: ' + resp.id)
       navigate('/')
     }catch(err){
-      alert('Failed to create report')
+      alert('Failed to create report. Please check all required fields.')
     }
   }
 
@@ -42,7 +76,8 @@ export default function ReportForm(){
             <TextInput label="Date" type="date" {...register('date')} required />
           </Grid.Col>
           <Grid.Col span={4}>
-            <TextInput label="Class teacher signature" placeholder="Name or ID" {...register('class_teacher_id')} required />
+            <input type="hidden" {...register('class_teacher_id')} />
+            <TextInput label="Class teacher" placeholder="Your ID" value={teacherDisplayId} readOnly description="ID stored automatically" />
           </Grid.Col>
           <Grid.Col span={4}>
             <Group position="apart" align="center">
@@ -77,11 +112,7 @@ export default function ReportForm(){
               {fields.map((f, idx) => (
                 <tr key={f.id}>
                   <td>
-                    <TextInput
-                      {...register(`periods.${idx}.period_number`)}
-                      value={idx + 1}
-                      readOnly
-                    />
+                    <TextInput {...register(`periods.${idx}.period_number`)} readOnly />
                   </td>
                   <td>
                     <Textarea minRows={1} autosize placeholder="Topic" {...register(`periods.${idx}.topic`)} />
@@ -90,7 +121,8 @@ export default function ReportForm(){
                     <TextInput placeholder="Subject" {...register(`periods.${idx}.subject`)} />
                   </td>
                   <td>
-                    <TextInput placeholder="Teacher ID" {...register(`periods.${idx}.subject_teacher_id`)} />
+                    <input type="hidden" {...register(`periods.${idx}.subject_teacher_id`)} />
+                    <TextInput placeholder="Subject teacher" value={teacherDisplayId || formatObjectId(periods[idx]?.subject_teacher_id)} readOnly description="ID stored automatically" />
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <Checkbox {...register(`periods.${idx}.signed`)} />

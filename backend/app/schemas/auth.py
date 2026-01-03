@@ -27,6 +27,7 @@ class UserPublic(BaseModel):
     name: str
     email: EmailStr
     role: Role
+    display_id: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -34,4 +35,3 @@ class UserPublic(BaseModel):
 
 class SignupRequest(LoginRequest):
     name: str
-    role: Role = Role.teacher

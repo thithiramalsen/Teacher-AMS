@@ -16,6 +16,7 @@ class User(Document):
     email: EmailStr = Indexed(unique=True)
     hashed_password: str
     role: Role = Role.teacher
+    display_id: Optional[str] = Field(default=None, min_length=4)
 
     class Settings:
         name = "users"

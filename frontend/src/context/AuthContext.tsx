@@ -6,6 +6,7 @@ type User = {
   name: string
   email: string
   role: 'teacher' | 'admin'
+  display_id?: string | null
 }
 
 type AuthContextValue = {
@@ -13,7 +14,7 @@ type AuthContextValue = {
   token: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  signup: (name: string, email: string, password: string, role?: 'teacher' | 'admin') => Promise<void>
+  signup: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -53,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me.data)
   }
 
-  async function signup(name: string, email: string, password: string, role: 'teacher' | 'admin' = 'teacher') {
-    await api.post('/auth/signup', { name, email, password, role })
+  async function signup(name: string, email: string, password: string) {
+    await api.post('/auth/signup', { name, email, password })
   }
 
   function logout() {

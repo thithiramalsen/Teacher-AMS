@@ -1,13 +1,16 @@
 import React from 'react'
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
-import { Header, Container, Group, Anchor, Title, Button, Badge, Paper, Text } from '@mantine/core'
+import { Paper, Container, Group, Title, Text, Button } from '@mantine/core'
+import NavBar from './components/NavBar'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ReportForm from './pages/ReportForm'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
 import Analytics from './pages/Analytics'
-import { BarChart, LogOut, Shield, FileEdit, Home, LineChart } from 'lucide-react'
+import AdminDashboard from './pages/AdminDashboard'
+import TeacherDashboard from './pages/TeacherDashboard'
+import { BarChart, FileEdit } from 'lucide-react'
 
 export default function App() {
   const { user, logout } = useAuth()
@@ -17,25 +20,7 @@ export default function App() {
 
   return (
     <>
-      <Header height={72} px="md" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <Container style={{ height: '100%' }}>
-          <Group position="apart" align="center" style={{ height: '100%' }}>
-            <Group spacing="xs" align="center">
-              <Badge color="indigo" variant="filled" size="lg" radius="sm">AMS</Badge>
-              <Title order={3} style={{ margin: 0 }}>Teacher AMS</Title>
-              {user && <Badge color="teal" variant="outline">{user.role}</Badge>}
-            </Group>
-            <Group spacing="sm">
-              <Button variant="subtle" component={Link} to="/" leftIcon={<Home size={16}/>}>Home</Button>
-              {!user && <Button variant="light" component={Link} to="/login" leftIcon={<Shield size={16}/>}>Login</Button>}
-              {!user && <Button variant="default" component={Link} to="/signup" leftIcon={<Shield size={16}/>}>Signup</Button>}
-              {user && <Button variant="gradient" gradient={{ from: 'indigo', to: 'cyan' }} component={Link} to="/reports/new" leftIcon={<FileEdit size={16}/>}>New Report</Button>}
-              {user?.role === 'admin' && <Button variant="outline" component={Link} to="/analytics" leftIcon={<LineChart size={16}/>}>Analytics</Button>}
-              {user && <Button variant="subtle" color="red" leftIcon={<LogOut size={16}/>} onClick={logout}>Logout</Button>}
-            </Group>
-          </Group>
-        </Container>
-      </Header>
+      <NavBar />
       <Container size="lg" style={{ paddingTop: 24 }}>
         <Routes>
           <Route path="/" element={<HomeHero user={user} />} />
@@ -43,6 +28,8 @@ export default function App() {
           <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup/>} />
           <Route path="/reports/new" element={<ProtectedRoute><ReportForm/></ProtectedRoute>} />
           <Route path="/analytics" element={<AdminRoute><Analytics/></AdminRoute>} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard/></AdminRoute>} />
+          <Route path="/teacher" element={<ProtectedRoute><TeacherDashboard/></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Container>

@@ -10,7 +10,9 @@ import certifi
 from app.config import Settings, get_settings
 from app.models.report import DailyReport
 from app.models.user import User
-from app.routers import analytics, auth, reports
+from app.models.subject import Subject
+from app.models.classroom import Classroom
+from app.routers import analytics, auth, reports, subjects, classrooms
 
 
 @asynccontextmanager
@@ -26,7 +28,7 @@ async def lifespan(app: FastAPI):
         )
         created_client = True
     db = motor_client[settings.mongodb_db]
-    await init_beanie(database=db, document_models=[User, DailyReport])
+    await init_beanie(database=db, document_models=[User, DailyReport, Subject, Classroom])
     yield
     if created_client:
         motor_client.close()
@@ -49,6 +51,8 @@ def create_app(settings: Optional[Settings] = None, motor_client: Optional[Async
     app.include_router(auth.router)
     app.include_router(reports.router)
     app.include_router(analytics.router)
+    app.include_router(subjects.router)
+    app.include_router(classrooms.router)
     return app
 
 

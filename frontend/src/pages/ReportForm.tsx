@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { createReport } from '../hooks/useReports'
 import { useNavigate } from 'react-router-dom'
-import { Card, TextInput, Checkbox, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea, Badge } from '@mantine/core'
+import { Card, TextInput, Checkbox, Button, Textarea, Grid, Group, Title, Space, Table, Text, ScrollArea, Badge, Select } from '@mantine/core'
 import { FileEdit } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { fetchSubjects, fetchClassrooms, fetchTeachers } from '../api'
 
 const formatObjectId = (id?: string) => {
   if (!id) return ''
@@ -18,6 +19,9 @@ export default function ReportForm(){
     defaultValues: { periods: Array.from({length:8}, (_,i)=>({ period_number: i+1, subject: '', topic: '', subject_teacher_id: '', signed: false, remarks: '' })) }
   })
   const { fields } = useFieldArray<any>({ control, name: 'periods' })
+  const [subjectOptions, setSubjectOptions] = useState<{ value: string; label: string }[]>([])
+  const [classroomOptions, setClassroomOptions] = useState<{ value: string; label: string; classTeacherId?: string }[]>([])
+  const [teacherOptions, setTeacherOptions] = useState<{ value: string; label: string }[]>([])
   const navigate = useNavigate()
   const periods = watch('periods') || []
   const totalTaught = useMemo(() => {
@@ -29,6 +33,16 @@ export default function ReportForm(){
     const short = user.display_id || formatObjectId(user.id)
     return user.name ? `${user.name} (${short})` : short
   }, [user])
+
+  const classNameValue = watch('class_name')
+
+  const classTeacherDisplay = useMemo(() => {
+    if (!classNameValue) return teacherDisplayId
+    const foundClass = classroomOptions.find(c => c.value === classNameValue)
+    if (!foundClass?.classTeacherId) return teacherDisplayId
+    const foundTeacher = teacherOptions.find(t => t.value === foundClass.classTeacherId)
+    return foundTeacher ? foundTeacher.label : teacherDisplayId
+  }, [classNameValue, classroomOptions, teacherOptions, teacherDisplayId])
 
   useEffect(() => {
     if (!user) return
@@ -43,6 +57,24 @@ export default function ReportForm(){
     }))
     if (needsPeriodUpdate) setValue('periods', updated)
   }, [user, setValue, periods, watch])
+
+  useEffect(() => {
+    async function loadLists() {
+      try {
+        const [subjectsRes, classroomsRes, teachersRes] = await Promise.all([
+          fetchSubjects(),
+          fetchClassrooms(),
+          fetchTeachers(),
+        ])
+        setSubjectOptions(subjectsRes.data.map((s: any) => ({ value: s._id, label: s.name })))
+        setClassroomOptions(classroomsRes.data.map((c: any) => ({ value: c._id, label: c.name, classTeacherId: c.class_teacher_id })))
+        setTeacherOptions(teachersRes.data.map((t: any) => ({ value: t.id, label: `${t.name} (${t.display_id || t.id.slice(0,4)+'...'+t.id.slice(-4)})` })))
+      } catch (err) {
+        // ignore for now; UI will show empty dropdowns
+      }
+    }
+    loadLists()
+  }, [])
 
   async function onSubmit(data: any){
     try{
@@ -77,7 +109,7 @@ export default function ReportForm(){
           </Grid.Col>
           <Grid.Col span={4}>
             <input type="hidden" {...register('class_teacher_id')} />
-            <TextInput label="Class teacher" placeholder="Your ID" value={teacherDisplayId} readOnly description="ID stored automatically" />
+            <TextInput label="Class teacher" placeholder="Class teacher" value={classTeacherDisplay} readOnly description="Set automatically from selected classroom" />
           </Grid.Col>
           <Grid.Col span={4}>
             <Group position="apart" align="center">
@@ -86,7 +118,20 @@ export default function ReportForm(){
             </Group>
           </Grid.Col>
           <Grid.Col span={6}>
-            <TextInput label="Class name" placeholder="e.g., Grade 10-A" {...register('class_name')} required />
+            <input type="hidden" {...register('class_name')} />
+            <Select
+              label="Classroom"
+              placeholder="Select classroom"
+              data={classroomOptions}
+              value={watch('class_name')}
+              onChange={(value) => {
+                setValue('class_name', value || '')
+                const found = classroomOptions.find((c) => c.value === value)
+                if (found?.classTeacherId) setValue('class_teacher_id', found.classTeacherId)
+              }}
+              searchable
+              clearable
+            />
           </Grid.Col>
           <Grid.Col span={6}>
             <TextInput label="Logged in as" value={user?.name || user?.email || ''} readOnly />
@@ -118,11 +163,26 @@ export default function ReportForm(){
                     <Textarea minRows={1} autosize placeholder="Topic" {...register(`periods.${idx}.topic`)} />
                   </td>
                   <td>
-                    <TextInput placeholder="Subject" {...register(`periods.${idx}.subject`)} />
+                    <input type="hidden" {...register(`periods.${idx}.subject`)} />
+                    <Select
+                      placeholder="Subject"
+                      data={subjectOptions}
+                      value={periods[idx]?.subject || ''}
+                      onChange={(value) => setValue(`periods.${idx}.subject`, value || '')}
+                      searchable
+                      clearable
+                    />
                   </td>
                   <td>
                     <input type="hidden" {...register(`periods.${idx}.subject_teacher_id`)} />
-                    <TextInput placeholder="Subject teacher" value={teacherDisplayId || formatObjectId(periods[idx]?.subject_teacher_id)} readOnly description="ID stored automatically" />
+                    <Select
+                      placeholder="Subject teacher"
+                      data={teacherOptions}
+                      value={periods[idx]?.subject_teacher_id || ''}
+                      onChange={(value) => setValue(`periods.${idx}.subject_teacher_id`, value || '')}
+                      searchable
+                      clearable
+                    />
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <Checkbox {...register(`periods.${idx}.signed`)} />

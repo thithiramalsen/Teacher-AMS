@@ -52,7 +52,10 @@ export default function Signup(){
           {...register('password', {
             required: 'Password is required',
             minLength: { value: 6, message: 'Password must be at least 6 characters' },
-            pattern: { value: /^[A-Za-z0-9]+$/, message: 'Password can only contain letters and numbers' },
+            pattern: {
+              value: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/,
+              message: 'Password must include at least one letter and one number',
+            },
           })}
           error={errors.password?.message}
         />

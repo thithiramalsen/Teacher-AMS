@@ -27,18 +27,7 @@ export default function NavBar(){
             )}
 
             {user?.role === 'teacher' && (
-              <>
-                <Button variant="subtle" component={Link} to="/teacher" leftIcon={<BarChart size={16} />} size="xs">Dashboard</Button>
-                <Menu withArrow placement="bottom-end">
-                  <Menu.Target>
-                    <Button variant="subtle" size="xs">Manage</Button>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item component={Link} to="/teacher/subjects">Subjects</Menu.Item>
-                    <Menu.Item component={Link} to="/teacher/classrooms">Classrooms</Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-              </>
+              <Button variant="subtle" component={Link} to="/teacher" leftIcon={<BarChart size={16} />} size="xs">Dashboard</Button>
             )}
 
             {!user && (
